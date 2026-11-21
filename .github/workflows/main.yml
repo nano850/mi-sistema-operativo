@@ -1,0 +1,25 @@
+name: Compilar MiOS Pro ISO
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Instalar herramientas
+        run: sudo apt-get update && sudo apt-get install -y nasm gcc-multilib grub-pc-bin xorriso mtools
+      - name: Compilar kernel
+        run: |
+          nasm -f elf32 boot.asm -o boot.o
+          gcc -m32 -c kernel.c -o kernel.o -ffreestanding -O2 -Wall -Wextra
+          ld -m elf_i386 -T linker.ld -o kernel.bin boot.o kernel.o
+      - name: Crear ISO
+        run: |
+          mkdir -p isodir/boot/grub
+          cp kernel.bin isodir/boot/kernel.bin
+          echo 'menuentry "MiOS Pro" { multiboot /boot/kernel.bin }' > isodir/boot/grub/grub.cfg
+          grub-mkrescue -o MiOS-Pro.iso isodir
+      - name: Subir ISO descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: MiOS-Pro-ISO
+          path: MiOS-Pro.iso
